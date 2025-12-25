@@ -35,7 +35,7 @@ client = genai.Client(api_key=api_key)
 
 try:
     response = client.models.generate_content(
-        model="gemini-2.0-flash-001",
+        model="gemini-3-flash",
         contents= messages,
         config=types.GenerateContentConfig(
             tools=[available_functions], system_instruction=system_prompt)
@@ -44,23 +44,31 @@ except Exception as e:
     print(f"Error Encounter: {e}")
     exit()
 
-function_call_result = call_function(response.function_calls[0])
 
 function_call_responses  = []
 
-if function_call_result.parts[0].function_response.response:
-    function_call_responses.append(function_call_result.parts[0])
-else:
-    raise Exception("function_call_result doesn't return '.parts[0].function_response.response'")
+is_verbose = "--verbose" in args
 
-if "--verbose" in args:
+if response.function_calls:
+    for function_call in response.function_calls:
+        result = call_function(function_call, verbose=is_verbose)
+        if len(result.parts) != 0:
+            if result.parts[0].function_response != None:
+                if result.parts[0].function_response.response != None:
+                    function_call_responses.append(result.parts[0])
+                    if is_verbose:
+                        print(f"-> {result.parts[0].function_response.response}")
+                else:
+                    raise Exception("function_call_result doesn't return '.parts[0].function_response.response'")
+            else:
+                raise Exception("function_call_result doesn't return '.parts[0].function_response'")
+        else:
+            raise Exception("function_call_result doesn't return '.parts'")
+else:
+    print(response.text)
+
+if is_verbose:
     print(f"User prompt: {user_prompt}")
     print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
     print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-    print(f"-> {function_call_result.parts[0].function_response.response}")
-else:
-    if response.function_calls is not None:
-        for call in response.function_calls:
-            print(f"Calling function: {call.name}({call.args})")
-    else:
-        print(response.text)
+    

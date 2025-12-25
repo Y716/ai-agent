@@ -1,7 +1,7 @@
 import os
 from google.genai import types
 
-def write_file(working_directory, file_path, content):
+def write_file(working_directory, file_path, contents):
     abs_working_directory = os.path.abspath(working_directory)
     target_file = os.path.abspath(os.path.join(working_directory, file_path))
     
@@ -10,8 +10,8 @@ def write_file(working_directory, file_path, content):
     
     try:
         with open(target_file, 'w') as f:
-            f.write(content)
-            return f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
+            f.write(contents)
+            return f'Successfully wrote to "{file_path}" ({len(contents)} characters written)'
     except Exception as e:
         return f"Error listing files{e}"
 

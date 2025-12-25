@@ -16,6 +16,7 @@ def run_python_file(working_directory, file_path, args=[]):
         return f'Error: "{file_path}" is not a Python file.'
 
     try:
+        args = [args]
         path = os.path.join(working_directory, file_path)
         more_args = ["python", path]
         args = more_args + args
