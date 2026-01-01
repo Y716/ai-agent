@@ -32,43 +32,53 @@ load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
 
 client = genai.Client(api_key=api_key)
-
-try:
-    response = client.models.generate_content(
-        model="gemini-3-flash",
-        contents= messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=system_prompt)
-    )
-except Exception as e:
-    print(f"Error Encounter: {e}")
-    exit()
-
-
-function_call_responses  = []
-
 is_verbose = "--verbose" in args
 
-if response.function_calls:
-    for function_call in response.function_calls:
-        result = call_function(function_call, verbose=is_verbose)
-        if len(result.parts) != 0:
-            if result.parts[0].function_response != None:
-                if result.parts[0].function_response.response != None:
-                    function_call_responses.append(result.parts[0])
-                    if is_verbose:
-                        print(f"-> {result.parts[0].function_response.response}")
-                else:
-                    raise Exception("function_call_result doesn't return '.parts[0].function_response.response'")
-            else:
-                raise Exception("function_call_result doesn't return '.parts[0].function_response'")
-        else:
-            raise Exception("function_call_result doesn't return '.parts'")
-else:
-    print(response.text)
+for _ in range(20):
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents= messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt)
+        )
+        if response.candidates is not None:
+            for candidate in response.candidates:
+                if candidate.content:
+                    messages.append(candidate.content)  
+    except Exception as e:
+        print(f"Error Encounter: {e}")
+        exit()
 
-if is_verbose:
-    print(f"User prompt: {user_prompt}")
-    print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-    print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-    
+    function_call_responses  = []
+
+    if response.function_calls:
+        for function_call in response.function_calls:
+            result = call_function(function_call, verbose=is_verbose)
+            if len(result.parts) != 0:
+                if result.parts[0].function_response != None:
+                    if result.parts[0].function_response.response != None:
+                        function_call_responses.append(result.parts[0])
+                        
+                        if is_verbose:
+                            print(f"-> {result.parts[0].function_response.response}")
+                    else:
+                        raise Exception("function_call_result doesn't return '.parts[0].function_response.response'")
+                else:
+                    raise Exception("function_call_result doesn't return '.parts[0].function_response'")
+            else:
+                raise Exception("function_call_result doesn't return '.parts'")
+    else:
+        print(response.text)
+        break
+    messages.append(types.Content(role="user", parts=function_call_responses))
+
+    if is_verbose:
+        print(f"User prompt: {user_prompt}")
+        if response.usage_metadata:
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
+if response.function_calls:
+    print("It does not give the final answer after 20 iterations, need more iterations")
+    exit(1)
